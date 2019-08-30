@@ -1,78 +1,100 @@
 use std::collections::HashMap;
 use std::fs;
+use std::ops::Deref;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 
 
 use failure::bail;
+use latex;
 use serde::{Serialize, Deserialize};
 use toml;
-use structopt::StructOpt;
+
 
 use crate::TeachResult;
+use crate::latexdoc::make_problem_sheet;
+
+
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Config {
+
+    #[serde(rename="sheet", default)]
+    pub sheet_config: SheetConfig,
+
+    #[serde(rename="coursework", default)]
+    pub coursework_config: SheetConfig,
+
+}
+
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct SheetConfig { 
+    pub document_class: Option<String>,
+    pub problem_macro: Option<String>,
+}
+
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Metadata {
-    author: String,
-    date: String,
+    pub author: String,
+    pub date: String,
     
     #[serde(flatten)]
     other: HashMap<String, String>,
+}
+
+impl Deref for Metadata {
+    type Target = HashMap<String, String>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.other
+    }
 
 }
 
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct SheetInfo {
+    title: String,
+    topic: String,
+    problems: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(untagged)]
 pub enum CourseItem {
-    Sheet { 
-        title: String,
-        topic: String, 
-        problems: HashMap<String, usize>
-    },
+    Sheet(SheetInfo),
 
 }
 
 
 impl CourseItem {
     
-    fn write(&self, name: &str, root: &Path, metadata: &Metadata) -> TeachResult<()> {
+    fn write(
+        &self, 
+        name: &str, 
+        root: &Path, 
+        metadata: &Metadata,
+        config: &Config,
+    ) -> TeachResult<()> {
         match self {
 
-            Self::Sheet { title, topic, problems } => {
+            Self::Sheet(info) => {
 
                 let path = root.join(format!("{}.tex", name));
 
                 let mut file = fs::File::create(&path)?;
 
-                writeln!(file, "\\documentclass[11pt]{{article}}\n\n")?;
-                writeln!(file, "\\def\\topic#1{{}}")?;
-                writeln!(file, "\\newcommand*\\includeproblem[1]{{%
-    \\item\\input{{#1/problem}}}}")?;
-    
+                let mut doc = make_problem_sheet(
+                    &info.title,
+                    metadata,
+                    &info.problems,
+                    &config.sheet_config
+                );
 
+                write!(file, "{}", latex::print(&doc)?)?;
 
-
-                writeln!(file, "\\title{{{}}}", title)?;
-                
-                writeln!(file, "\\author{{{}}}", metadata.author)?;
-                writeln!(file, "\\date{{{}}}", metadata.date)?;
-                for (k, v) in metadata.other.iter() {
-                    writeln!(file, "\\{}{{{}}}", k, v)?;
-                }
-
-                writeln!(file, "\\topic{{{}}}\n\n", topic)?;
-
-                writeln!(file, "\\begin{{document}}")?;
-                writeln!(file, "\\begin{{enumerate}}\n")?;
-                if problems.is_empty() {
-                    writeln!(file, "\\item")?;
-                }
-                for (problem, mark) in problems.iter() {
-                    writeln!(file, "\\includeproblem{{{}}}", problem)?;
-                }
-                writeln!(file, "\\end{{enumerate}}")?;
-                writeln!(file, "\\end{{document}}")?;
             },
 
         }
@@ -82,14 +104,23 @@ impl CourseItem {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Component(HashMap<String, CourseItem>);
+pub struct Component {
+
+    #[serde(flatten)]
+    items: HashMap<String, CourseItem> 
+}
 
 impl Component {
 
-    fn write(&self, root: &Path, metadata: &Metadata) -> TeachResult<()> {
-        for (n, item) in self.0.iter() {
+    fn write(
+        &self, 
+        root: &Path, 
+        metadata: &Metadata, 
+        config: &Config
+    ) -> TeachResult<()> {
+        for (n, item) in self.items.iter() {
              println!("Creating {}/{}", root.display(), n);
-             item.write(n, root, &metadata)?;
+             item.write(n, root, &metadata, &config)?;
         }
         Ok(())
     }
@@ -100,6 +131,9 @@ impl Component {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CourseFile {
     metadata: Metadata,
+
+    #[serde(flatten)]
+    config: Config,
     
     #[serde(flatten)]
     items: HashMap<String, Component>
@@ -129,7 +163,7 @@ impl CourseFile {
             if !p.exists() {
                 fs::create_dir(&p)?;
             }
-            items.write(&p, &self.metadata)?;
+            items.write(&p, &self.metadata, &self.config)?;
 
         }
 
