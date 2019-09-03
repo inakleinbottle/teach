@@ -12,15 +12,30 @@ use toml;
 
 
 use crate::TeachResult;
-use crate::latexdoc::make_problem_sheet;
+use crate::latexdoc::{make_problem_sheet, make_coursework_sheet};
+use crate::makefile::{write_sheet_makefile, write_component_makefile};
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Sources {
+
+    problems: String,
+
+    #[serde(flatten)]
+    other: HashMap<String, String>,
+
+}
 
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
 
+    pub sources: Sources,
+
     #[serde(rename="sheet", default)]
     pub sheet_config: SheetConfig,
+
+    #[serde(rename="solution", default)]
+    pub solution_config: SheetConfig,
 
     #[serde(rename="coursework", default)]
     pub coursework_config: SheetConfig,
@@ -32,6 +47,7 @@ pub struct Config {
 pub struct SheetConfig { 
     pub document_class: Option<String>,
     pub problem_macro: Option<String>,
+    pub include_preamble: Option<String>
 }
 
 
@@ -62,10 +78,18 @@ pub struct SheetInfo {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct CourseworkInfo {
+    title: String,
+    topic: String,
+    problems: Vec<String>,
+    marks: Vec<u32>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(untagged)]
 pub enum CourseItem {
+    Coursework(CourseworkInfo),
     Sheet(SheetInfo),
-
 }
 
 
@@ -82,19 +106,57 @@ impl CourseItem {
 
             Self::Sheet(info) => {
 
-                let path = root.join(format!("{}.tex", name));
+                fs::write(
+                    root.join(format!("{}-problems.tex", name)),
+                    latex::print(
+                        &make_problem_sheet(
+                            &info.title,
+                            metadata,
+                            &info.problems,
+                            &config.sheet_config
+                        )
+                    )?
+                )?;
+                fs::write(
+                    root.join(format!("{}-solutions.tex", name)),
+                    latex::print(
+                        &make_problem_sheet(
+                            &info.title,
+                            metadata,
+                            &info.problems,
+                            &config.solution_config
+                        )
+                    )?
+                )?;
+                write_sheet_makefile(name, root, &info.problems)?;
+               
+            },
 
-                let mut file = fs::File::create(&path)?;
+            Self::Coursework(info) => {
 
-                let mut doc = make_problem_sheet(
-                    &info.title,
-                    metadata,
-                    &info.problems,
-                    &config.sheet_config
-                );
-
-                write!(file, "{}", latex::print(&doc)?)?;
-
+                fs::write(
+                    root.join(format!("{}-problems.tex", name)),
+                    latex::print(
+                        &make_coursework_sheet(
+                            &info.title,
+                            metadata,
+                            &info.problems,
+                            &info.marks,
+                            &config.sheet_config
+                        )
+                    )?
+                )?;
+                fs::write(
+                    root.join(format!("{}-solutions.tex", name)),
+                    latex::print(
+                        &make_problem_sheet(
+                            &format!("{} -- Solutions", &info.title),
+                            metadata,
+                            &info.problems,
+                            &config.solution_config
+                        )
+                    )?
+                )?;
             },
 
         }
@@ -118,10 +180,21 @@ impl Component {
         metadata: &Metadata, 
         config: &Config
     ) -> TeachResult<()> {
-        for (n, item) in self.items.iter() {
-             println!("Creating {}/{}", root.display(), n);
-             item.write(n, root, &metadata, &config)?;
+        
+        for (name, item) in self.items.iter() {
+             println!("Creating {}/{}", root.display(), name);
+             let path = root.join(name);
+             if !path.exists() {
+                 fs::create_dir(&path)?;
+             }
+             item.write(name, &path, &metadata, &config)?;
         }
+        write_component_makefile(
+            root,
+            &config.sources.problems,
+            &["../include"]
+        )?;
+
         Ok(())
     }
 

@@ -1,6 +1,4 @@
-use std::convert::Into;
-use std::ops::{Deref, DerefMut};
-use std::path::Path;
+
 
 use latex::{
         DocumentClass, 
@@ -10,38 +8,6 @@ use latex::{
     };
 
 use crate::course::{Metadata, SheetConfig};
-
-
-struct Enumerate(Vec<String>);
-
-impl Deref for Enumerate {
-    type Target = Vec<String>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for Enumerate {
-
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl Into<Element> for Enumerate {
-
-    fn into(self) -> Element {
-        let items = self.0.iter().map(|i| {
-            format!("\\item {}", i)
-        }).collect();
-        Element::Environment(
-            "enumerate".to_owned(),
-            items
-        )
-    }
-
-}
 
 
 
@@ -72,18 +38,43 @@ fn make_basic_doc(
 }
 
 
+pub fn make_sheet(
+    title: &str,
+    metadata: &Metadata,
+    sheet_config: &SheetConfig
+) -> Document {
+    let doc_class = match sheet_config.document_class.as_ref() {
+        Some(ref cls) => cls,
+        None => "article"
+    };
+
+    let mut doc = make_basic_doc(&doc_class, title, metadata);
+
+
+
+    if let Some(ref include_preamble) = sheet_config.include_preamble {
+        doc.preamble.push(
+            PreambleElement::UserDefined(
+                include_preamble.to_owned()
+            )
+        );
+    }
+
+    doc.push(
+        Element::UserDefined("\\maketitle".to_owned())
+    );
+
+
+    doc
+}
+
 pub fn make_problem_sheet<S: AsRef<str>>(
     title: &str,
     metadata: &Metadata,
     problems: &[S],
     sheet_config: &SheetConfig
 ) -> Document {
-    let doc_class = match sheet_config.document_class.as_ref() {
-        Some(ref cls) => cls,
-        None => "article"
-    };
-
-    let mut doc = make_basic_doc(&doc_class, title, metadata);
+    let mut doc = make_sheet(title, metadata, sheet_config);
 
     let problem_macro = match sheet_config.problem_macro.as_ref() {
         Some(ref mac) => mac,
@@ -91,33 +82,24 @@ pub fn make_problem_sheet<S: AsRef<str>>(
     };
 
     doc.push(
-        Element::UserDefined("\\maketitle".to_owned())
-    );
-
-    doc.push(
         Element::Environment(
             "enumerate".to_owned(),
             problems.iter().map(|item| {
-                format!("\\{}{{{}}}", problem_macro, item.as_ref())
+                format!("{}{{{}}}", problem_macro, item.as_ref())
             }).collect()
         )
     );
-
     doc
 }
 
-pub fn make_solution_sheet<S: AsRef<str>>(
+pub fn make_coursework_sheet<S: AsRef<str>>(
     title: &str,
     metadata: &Metadata,
     problems: &[S],
+    marks: &[u32],
     sheet_config: &SheetConfig
 ) -> Document {
-    let doc_class = match sheet_config.document_class.as_ref() {
-        Some(ref cls) => cls,
-        None => "article"
-    };
-
-    let mut doc = make_basic_doc(&doc_class, title, metadata);
+    let mut doc = make_sheet(title, metadata, sheet_config);
 
     let problem_macro = match sheet_config.problem_macro.as_ref() {
         Some(ref mac) => mac,
@@ -125,17 +107,12 @@ pub fn make_solution_sheet<S: AsRef<str>>(
     };
 
     doc.push(
-        Element::UserDefined("\\maketitle".to_owned())
-    );
-
-    doc.push(
         Element::Environment(
             "enumerate".to_owned(),
-            problems.iter().map(|item| {
-                format!("\\{}{{{}}}", problem_macro, item.as_ref())
+            problems.iter().zip(marks.iter()).map(|(item, mark)| {
+                format!("{}[{}]{{{}}}", problem_macro, mark, item.as_ref())
             }).collect()
         )
     );
-
     doc
 }
