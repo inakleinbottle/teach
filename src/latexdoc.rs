@@ -4,7 +4,8 @@ use latex::{
         DocumentClass, 
         PreambleElement, 
         Element, 
-        Document
+        Document,
+        Paragraph,
     };
 
 use crate::course::{Metadata, SheetConfig};
@@ -40,6 +41,7 @@ fn make_basic_doc(
 
 pub fn make_sheet(
     title: &str,
+    intro: &str,
     metadata: &Metadata,
     sheet_config: &SheetConfig
 ) -> Document {
@@ -64,17 +66,22 @@ pub fn make_sheet(
         Element::UserDefined("\\maketitle".to_owned())
     );
 
+    doc.push(
+        Element::Para(Paragraph::from(intro))
+    );
+
 
     doc
 }
 
 pub fn make_problem_sheet<S: AsRef<str>>(
     title: &str,
+    intro: &str,
     metadata: &Metadata,
     problems: &[S],
     sheet_config: &SheetConfig
 ) -> Document {
-    let mut doc = make_sheet(title, metadata, sheet_config);
+    let mut doc = make_sheet(title, intro, metadata, sheet_config);
 
     let problem_macro = match sheet_config.problem_macro.as_ref() {
         Some(ref mac) => mac,
@@ -94,13 +101,14 @@ pub fn make_problem_sheet<S: AsRef<str>>(
 
 pub fn make_coursework_sheet<S: AsRef<str>>(
     title: &str,
+    intro: &str,
     metadata: &Metadata,
     problems: &[S],
     marks: &[u32],
     sheet_config: &SheetConfig
 ) -> Document {
-    let mut doc = make_sheet(title, metadata, sheet_config);
-
+    let mut doc = make_sheet(title, intro, metadata, sheet_config);
+    
     let problem_macro = match sheet_config.problem_macro.as_ref() {
         Some(ref mac) => mac,
         None => "\\input"

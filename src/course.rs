@@ -74,6 +74,7 @@ impl Deref for Metadata {
 pub struct SheetInfo {
     title: String,
     topic: String,
+    intro: Option<String>,
     problems: Vec<String>,
 }
 
@@ -81,6 +82,7 @@ pub struct SheetInfo {
 pub struct CourseworkInfo {
     title: String,
     topic: String,
+    intro: Option<String>,
     problems: Vec<String>,
     marks: Vec<u32>,
 }
@@ -105,12 +107,17 @@ impl CourseItem {
         match self {
 
             Self::Sheet(info) => {
+                let intro = match info.intro {
+                    Some(ref t) => t,
+                    None => "",
+                };
 
                 fs::write(
                     root.join(format!("{}-problems.tex", name)),
                     latex::print(
                         &make_problem_sheet(
                             &info.title,
+                            intro,
                             metadata,
                             &info.problems,
                             &config.sheet_config
@@ -121,7 +128,8 @@ impl CourseItem {
                     root.join(format!("{}-solutions.tex", name)),
                     latex::print(
                         &make_problem_sheet(
-                            &info.title,
+                            &format!("{} -- Solutions", &info.title),
+                            intro,
                             metadata,
                             &info.problems,
                             &config.solution_config
@@ -133,12 +141,17 @@ impl CourseItem {
             },
 
             Self::Coursework(info) => {
+                let intro = match info.intro {
+                    Some(ref t) => t,
+                    None => "",
+                };
 
                 fs::write(
                     root.join(format!("{}-problems.tex", name)),
                     latex::print(
                         &make_coursework_sheet(
                             &info.title,
+                            intro,
                             metadata,
                             &info.problems,
                             &info.marks,
@@ -151,6 +164,7 @@ impl CourseItem {
                     latex::print(
                         &make_problem_sheet(
                             &format!("{} -- Solutions", &info.title),
+                            intro,
                             metadata,
                             &info.problems,
                             &config.solution_config
