@@ -35,6 +35,14 @@ fn make_basic_doc(
         )
     );
 
+    for (mac, item) in metadata.iter() {
+        doc.preamble.push(
+            PreambleElement::UserDefined(
+                format!("\\{}{{{}}}", mac, item)
+            )
+        );
+    }
+
     doc
 }
 

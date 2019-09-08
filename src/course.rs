@@ -2,10 +2,12 @@ use std::collections::HashMap;
 use std::fs;
 use std::ops::Deref;
 use std::io::prelude::*;
+use std::process::{Command, Stdio};
 use std::path::{Path, PathBuf};
 
 
 use failure::bail;
+use log::{warn, info, trace, error, debug};
 use latex;
 use serde::{Serialize, Deserialize};
 use toml;
@@ -18,10 +20,10 @@ use crate::makefile::{write_sheet_makefile, write_component_makefile};
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Sources {
 
-    problems: String,
+    pub problems: String,
 
     #[serde(flatten)]
-    other: HashMap<String, String>,
+    pub other: HashMap<String, String>,
 
 }
 
@@ -57,7 +59,7 @@ pub struct Metadata {
     pub date: String,
     
     #[serde(flatten)]
-    other: HashMap<String, String>,
+    pub other: HashMap<String, String>,
 }
 
 impl Deref for Metadata {
@@ -72,19 +74,19 @@ impl Deref for Metadata {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SheetInfo {
-    title: String,
-    topic: String,
-    intro: Option<String>,
-    problems: Vec<String>,
+    pub title: String,
+    pub topic: String,
+    pub intro: Option<String>,
+    pub problems: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CourseworkInfo {
-    title: String,
-    topic: String,
-    intro: Option<String>,
-    problems: Vec<String>,
-    marks: Vec<u32>,
+    pub title: String,
+    pub topic: String,
+    pub intro: Option<String>,
+    pub problems: Vec<String>,
+    pub marks: Vec<u32>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -97,7 +99,7 @@ pub enum CourseItem {
 
 impl CourseItem {
     
-    fn write(
+    fn build(
         &self, 
         name: &str, 
         root: &Path, 
@@ -183,12 +185,12 @@ impl CourseItem {
 pub struct Component {
 
     #[serde(flatten)]
-    items: HashMap<String, CourseItem> 
+    pub items: HashMap<String, CourseItem> 
 }
 
 impl Component {
 
-    fn write(
+    fn build(
         &self, 
         root: &Path, 
         metadata: &Metadata, 
@@ -201,7 +203,7 @@ impl Component {
              if !path.exists() {
                  fs::create_dir(&path)?;
              }
-             item.write(name, &path, &metadata, &config)?;
+             item.build(name, &path, &metadata, &config)?;
         }
         write_component_makefile(
             root,
@@ -217,13 +219,13 @@ impl Component {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CourseFile {
-    metadata: Metadata,
+    pub metadata: Metadata,
 
     #[serde(flatten)]
-    config: Config,
+    pub config: Config,
     
     #[serde(flatten)]
-    items: HashMap<String, Component>
+    pub items: HashMap<String, Component>
 
 }
 
@@ -236,7 +238,7 @@ impl CourseFile {
         Ok(cf)
     }
 
-    pub fn write(&self, path: &Path) -> TeachResult<()> {
+    pub fn build(&self, path: &Path) -> TeachResult<()> {
         if !path.is_dir() {
             bail!("Path {} does not exist or is not a directory", 
                   &path.display());
@@ -250,11 +252,57 @@ impl CourseFile {
             if !p.exists() {
                 fs::create_dir(&p)?;
             }
-            items.write(&p, &self.metadata, &self.config)?;
+            items.build(&p, &self.metadata, &self.config)?;
 
         }
 
         Ok(())
+    }
+
+    fn edit(&self, path: &Path, problem: &str, component: &str, touch: bool) -> TeachResult<()> {
+        let p = path.join(&self.config.sources.problems);
+
+        if !p.is_dir() && !p.is_file() { 
+            warn!("Directory {} does not exist, creating", p.display());
+            fs::create_dir(&p)?;
+        } else if p.is_file() {
+            bail!("Path {} is a file", p.display());
+        }
+
+        let prob_path = p.join(problem);
+
+        if !prob_path.exists() {
+            // Create new problem
+            fs::create_dir(&prob_path)?;
+            fs::File::create(&prob_path.join("problem.tex"))?;
+            fs::File::create(&prob_path.join("solution.tex"))?;
+        
+        } else if prob_path.is_file() {
+            bail!("Cannot create {}, exists as file", prob_path.display());
+        }
+
+        if touch {
+            return Ok(())
+        }
+
+        Command::new("vim")
+                .arg(&prob_path.join(component))
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .stdin(Stdio::inherit())
+                .output()?;
+
+
+
+        Ok(())
+    }
+
+    pub fn edit_problem(&self, path: &Path, problem: &str, touch: bool) -> TeachResult<()> {
+        self.edit(path, problem, "problem.tex", touch)
+    }
+
+    pub fn edit_solution(&self, path: &Path, problem: &str, touch: bool) -> TeachResult<()> {
+        self.edit(path, problem, "solution.tex", touch)
     }
 
 }
