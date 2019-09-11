@@ -3,6 +3,7 @@ use std::path::{PathBuf, Path};
 use structopt::StructOpt;
 
 use teach::{CourseFile, TeachResult};
+use teach::preview::Previewer;
 
 
 #[derive(StructOpt)]
@@ -25,6 +26,9 @@ enum Commands {
 
     #[structopt(name="solution")]
     Solution(EditInfo),
+
+    #[structopt(name="preview")]
+    Preview { name: String },
 
 }
 
@@ -60,6 +64,11 @@ fn main() -> TeachResult<()> {
             println!("Editing solution {}", &info.name);
             cf.edit_solution(&opt.path, &info.name, info.touch)?;
         },
+        Preview { name } => {
+            println!("Previewing problem {}", name);
+            let previewer = Previewer::new(&opt.path, &name, &cf.config);
+            previewer.preview()?;
+        }
 
     }
     

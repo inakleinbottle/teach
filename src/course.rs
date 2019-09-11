@@ -16,6 +16,8 @@ use toml;
 use crate::TeachResult;
 use crate::latexdoc::{make_problem_sheet, make_coursework_sheet};
 use crate::makefile::{write_sheet_makefile, write_component_makefile};
+use crate::config::AppConfig;
+
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Sources {
@@ -285,7 +287,7 @@ impl CourseFile {
             return Ok(())
         }
 
-        Command::new("vim")
+        Command::new(&AppConfig::get().editor)
                 .arg(&prob_path.join(component))
                 .stdout(Stdio::inherit())
                 .stderr(Stdio::inherit())

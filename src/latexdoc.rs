@@ -1,4 +1,5 @@
 
+use std::collections::HashMap;
 
 use latex::{
         DocumentClass, 
@@ -119,7 +120,7 @@ pub fn make_coursework_sheet<S: AsRef<str>>(
     
     let problem_macro = match sheet_config.problem_macro.as_ref() {
         Some(ref mac) => mac,
-        None => "\\input"
+        None => "\\item\\input"
     };
 
     doc.push(
@@ -130,5 +131,31 @@ pub fn make_coursework_sheet<S: AsRef<str>>(
             }).collect()
         )
     );
+    doc
+}
+
+
+pub fn make_preview_sheet(problem: &str, sheet_config: &SheetConfig) -> Document {
+    let md = Metadata {
+        author: "preview".to_owned(),
+        date: "".to_owned(),
+        other: HashMap::new()
+    };
+    let title = format!("{} Preview", problem);
+    let mut doc = make_sheet(&title, "", &md, sheet_config);
+
+    let prob_path = format!("{}/problem.tex", problem);
+    let sol_path = format!("{}/solution.tex", problem);
+
+
+    doc.push(
+        Element::Environment(
+            "enumerate".to_owned(),
+            vec![
+                format!("\\item\\input{{{}}}\n\\vspace*{{2em}}\\hrule\n\n\\textbf{{Solution}}\\par\n\\input{{{}}}", prob_path, sol_path)
+            ]
+        )
+    );
+
     doc
 }

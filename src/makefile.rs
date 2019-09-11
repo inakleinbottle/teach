@@ -4,8 +4,10 @@ use std::io::prelude::*;
 use std::path::Path;
 
 
-
+use crate::config::AppConfig;
 use crate::TeachResult;
+
+
 
 
 pub struct MakeTarget<'a, T, P, R> 
@@ -147,10 +149,13 @@ pub fn write_component_makefile(
     });
     TEXINPUTS.push(':');
 
+    let config = AppConfig::get();
+    let tex_engine = format!("TEX = {}", &config.tex_engine);
+    let tex_flags = format!("TEXFLAGS = {}", &config.tex_flags);
 
     let vars = &[
-        "TEX = pdflatex",
-        "TEXFLAGS = -interaction=nonstopmode",
+        tex_engine.as_str(),
+        tex_flags.as_str(),
         "DIRS = $(wildcard */.)",
         "PDF_FILES = $(notdir $(patsubst %.tex, %.pdf, $(wildcard */*.tex)))",
         probdir.as_str(),
