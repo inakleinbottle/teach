@@ -1,35 +1,27 @@
-
 use confy;
 use lazy_static::lazy_static;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-
-lazy_static!{
-    static ref TEACH_CONFIG: AppConfig = confy::load("teach")
-                                               .unwrap_or_default();
+lazy_static! {
+    static ref TEACH_CONFIG: AppConfig = confy::load("teach").unwrap_or_default();
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AppConfig {
-
     pub editor: String,
     pub pdf_viewer: String,
 
     pub tex_engine: String,
-    pub tex_flags: String
-
+    pub tex_flags: String,
 }
 
 impl AppConfig {
-
     pub fn get() -> &'static AppConfig {
         &TEACH_CONFIG
     }
-
 }
 
-
-#[cfg(not(target_os="windows"))]
+#[cfg(not(target_os = "windows"))]
 impl Default for AppConfig {
     fn default() -> AppConfig {
         AppConfig {
@@ -41,8 +33,7 @@ impl Default for AppConfig {
     }
 }
 
-
-#[cfg(target_os="windows")]
+#[cfg(target_os = "windows")]
 impl Default for AppConfig {
     fn default() -> AppConfig {
         AppConfig {
