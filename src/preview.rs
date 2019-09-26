@@ -101,6 +101,17 @@ impl<'a> Previewer<'a> {
                 let rd = BufReader::new(stdout);
                 let report = outparse::parse_log(rd);
                 info!("{}: {}", &self.problem, &report);
+                for message in &report.messages {
+                    use outparse::Message::*;
+                    match message {
+                        Error(i) => warn!("Error: {}", i.full),
+                        Warning(i) => info!("Warning: {}", i.full),
+                        Badbox(i) => trace!("Badbox: {}", i.full),
+                        MissingCitation { label } => info!("Missing citation: {}", label),
+                        MissingReference { label } => info!("Missing reference: {}", label),
+                        _ => {}
+                    };
+                }
 
                 if report.missing_references == 0 && report.missing_citations == 0 {
                     break
