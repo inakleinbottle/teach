@@ -11,7 +11,7 @@ use outparse;
 use log::{warn, error, info, trace};
 
 use crate::config::AppConfig;
-use crate::course::Config;
+use crate::course_items::Config;
 use crate::latexdoc;
 use crate::TeachResult;
 

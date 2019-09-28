@@ -2,9 +2,14 @@ use std::collections::HashMap;
 
 use latex::{Document, DocumentClass, Element, Paragraph, PreambleElement};
 
-use crate::course::{Metadata, SheetConfig};
+use crate::course_items::{Metadata, SheetConfig};
 
-fn make_basic_doc(doc_class: &str, title: &str, metadata: &Metadata) -> Document {
+fn make_basic_doc(
+    doc_class: &str, 
+    title: &str,
+    date: &str,
+    metadata: &Metadata
+) -> Document {
     let document_class = match doc_class {
         "article" => DocumentClass::Article,
         "report" => DocumentClass::Report,
@@ -17,7 +22,7 @@ fn make_basic_doc(doc_class: &str, title: &str, metadata: &Metadata) -> Document
     doc.preamble.author(&metadata.author).title(title);
     doc.preamble.push(PreambleElement::UserDefined(format!(
         "\\date{{{}}}",
-        metadata.date
+        date
     )));
 
     for (mac, item) in metadata.iter() {
@@ -33,6 +38,7 @@ fn make_basic_doc(doc_class: &str, title: &str, metadata: &Metadata) -> Document
 pub fn make_sheet(
     title: &str,
     intro: &str,
+    date: &str,
     metadata: &Metadata,
     sheet_config: &SheetConfig,
 ) -> Document {
@@ -41,7 +47,7 @@ pub fn make_sheet(
         None => "article",
     };
 
-    let mut doc = make_basic_doc(&doc_class, title, metadata);
+    let mut doc = make_basic_doc(&doc_class, title, date, metadata);
 
     if let Some(ref include_preamble) = sheet_config.include_preamble {
         doc.preamble
@@ -58,11 +64,12 @@ pub fn make_sheet(
 pub fn make_problem_sheet<S: AsRef<str>>(
     title: &str,
     intro: &str,
+    date: &str,
     metadata: &Metadata,
     problems: &[S],
     sheet_config: &SheetConfig,
 ) -> Document {
-    let mut doc = make_sheet(title, intro, metadata, sheet_config);
+    let mut doc = make_sheet(title, intro, date, metadata, sheet_config);
 
     let problem_macro = match sheet_config.problem_macro.as_ref() {
         Some(ref mac) => mac,
@@ -82,12 +89,13 @@ pub fn make_problem_sheet<S: AsRef<str>>(
 pub fn make_coursework_sheet<S: AsRef<str>>(
     title: &str,
     intro: &str,
+    date: &str,
     metadata: &Metadata,
     problems: &[S],
     marks: &[u32],
     sheet_config: &SheetConfig,
 ) -> Document {
-    let mut doc = make_sheet(title, intro, metadata, sheet_config);
+    let mut doc = make_sheet(title, intro, date, metadata, sheet_config);
 
     let problem_macro = match sheet_config.problem_macro.as_ref() {
         Some(ref mac) => mac,
@@ -108,11 +116,11 @@ pub fn make_coursework_sheet<S: AsRef<str>>(
 pub fn make_preview_sheet(problem: &str, sheet_config: &SheetConfig) -> Document {
     let md = Metadata {
         author: "preview".to_owned(),
-        date: "".to_owned(),
         other: HashMap::new(),
     };
+    let date = String::new();
     let title = format!("{} Preview", problem);
-    let mut doc = make_sheet(&title, "", &md, sheet_config);
+    let mut doc = make_sheet(&title, "", &date, &md, sheet_config);
 
     let prob_path = format!("{}/problem.tex", problem);
     let sol_path = format!("{}/solution.tex", problem);

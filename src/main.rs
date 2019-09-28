@@ -5,7 +5,7 @@ use log::{self, info};
 use simple_logger;
 
 use teach::preview::Previewer;
-use teach::{CourseFile, TeachResult};
+use teach::{Course, TeachResult};
 
 #[derive(StructOpt)]
 struct EditInfo {
@@ -52,7 +52,7 @@ struct Options {
 fn main() -> TeachResult<()> {
     let opt = Options::from_args();
 
-    let cf = CourseFile::load(&opt.path)?;
+    let cf = Course::load(&opt.path)?;
     use Commands::*;
 
     let level = match (opt.verbose, opt.quiet) {
@@ -65,19 +65,19 @@ fn main() -> TeachResult<()> {
     match opt.command {
         Build => {
             info!("Building course from {}", &opt.path.display());
-            cf.build(&opt.path)?;
+            cf.build()?;
         }
         Problem(info) => {
             info!("Editing problem {}", &info.name);
-            cf.edit_problem(&opt.path, &info.name, info.touch)?;
+            cf.edit_problem(&info.name, info.touch)?;
         }
         Solution(info) => {
             info!("Editing solution {}", &info.name);
-            cf.edit_solution(&opt.path, &info.name, info.touch)?;
+            cf.edit_solution(&info.name, info.touch)?;
         }
         Preview { name } => {
             info!("Previewing problem {}", name);
-            let previewer = Previewer::new(&opt.path, &name, &cf.config);
+            let previewer = Previewer::new(&cf.path, &name, &cf.course_file.config);
             previewer.preview()?;
         }
     }

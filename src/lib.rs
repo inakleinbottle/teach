@@ -7,6 +7,6 @@ pub mod course;
 pub mod latexdoc;
 pub mod makefile;
 pub mod preview;
+pub mod course_items;
 
-
-pub use course::CourseFile;
+pub use course::Course;
