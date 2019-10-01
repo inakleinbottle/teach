@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::ops::Deref;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::fs;
 
 use latex;
@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::TeachResult;
 use crate::latexdoc::{make_coursework_sheet, make_problem_sheet};
 use crate::makefile::{write_component_makefile, write_sheet_makefile};
-
+use crate::Course;
 
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -87,9 +87,7 @@ impl CourseItem {
         &self,
         name: &str,
         root: &Path,
-        date: &str,
-        metadata: &Metadata,
-        config: &Config,
+        course: &Course
     ) -> TeachResult<()> {
         match self {
             Self::Sheet(info) => {
@@ -103,10 +101,10 @@ impl CourseItem {
                     latex::print(&make_problem_sheet(
                         &info.title,
                         intro,
-                        date,
-                        metadata,
+                        &course.year,
+                        &course.course_file.metadata,
                         &info.problems,
-                        &config.sheet_config,
+                        &course.course_file.config.sheet_config,
                     ))?,
                 )?;
                 fs::write(
@@ -114,10 +112,10 @@ impl CourseItem {
                     latex::print(&make_problem_sheet(
                         &format!("{} -- Solutions", &info.title),
                         intro,
-                        date,
-                        metadata,
+                        &course.year,
+                        &course.course_file.metadata,
                         &info.problems,
-                        &config.solution_config,
+                        &course.course_file.config.solution_config,
                     ))?,
                 )?;
                 write_sheet_makefile(name, root, &info.problems)?;
@@ -134,11 +132,11 @@ impl CourseItem {
                     latex::print(&make_coursework_sheet(
                         &info.title,
                         intro,
-                        date,
-                        metadata,
+                        &course.year,
+                        &course.course_file.metadata,
                         &info.problems,
                         &info.marks,
-                        &config.sheet_config,
+                        &course.course_file.config.sheet_config,
                     ))?,
                 )?;
                 fs::write(
@@ -146,10 +144,10 @@ impl CourseItem {
                     latex::print(&make_problem_sheet(
                         &format!("{} -- Solutions", &info.title),
                         intro,
-                        date,
-                        metadata,
+                        &course.year,
+                        &course.course_file.metadata,
                         &info.problems,
-                        &config.solution_config,
+                        &course.course_file.config.solution_config,
                     ))?,
                 )?;
                 write_sheet_makefile(name, root, &info.problems)?;
@@ -169,9 +167,7 @@ impl Component {
     pub fn build(
         &self, 
         root: &Path, 
-        date: &str, 
-        metadata: &Metadata, 
-        config: &Config
+        course: &Course
     ) -> TeachResult<()> {
         for (name, item) in self.items.iter() {
             info!("Creating {}/{}", root.display(), name);
@@ -179,9 +175,20 @@ impl Component {
             if !path.exists() {
                 fs::create_dir(&path)?;
             }
-            item.build(name, &path, date, &metadata, &config)?;
+            item.build(
+                name, 
+                &path, 
+                course,
+            )?;
         }
-        write_component_makefile(root, &config.sources.problems, &["../include"])?;
+        let mut probs_path = PathBuf::from("..");
+        probs_path.push("..");
+        probs_path.push(&course.course_file.config.sources.problems);
+        write_component_makefile(
+            root, 
+            &probs_path.to_string_lossy(), 
+            &["../../include"]
+        )?;
 
         Ok(())
     }

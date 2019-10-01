@@ -140,8 +140,8 @@ pub fn write_component_makefile(
 ) -> TeachResult<()> {
     info!("Creating makefile: {}", path.display());
 
-    let probdir = format!("PROBDIR=../{}", problems_dir);
-    let mut TEXINPUTS = String::from("export TEXINPUTS=../");
+    let probdir = format!("PROBDIR={}", problems_dir);
+    let mut TEXINPUTS = String::from("export TEXINPUTS=");
     TEXINPUTS.push_str(problems_dir);
     include_dirs.iter().for_each(|d| {
         TEXINPUTS.push(':');
