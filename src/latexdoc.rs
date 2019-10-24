@@ -75,14 +75,16 @@ pub fn make_problem_sheet<S: AsRef<str>>(
         Some(ref mac) => mac,
         None => "\\item\\input",
     };
-
-    doc.push(Element::Environment(
-        "enumerate".to_owned(),
-        problems
-            .iter()
-            .map(|item| format!("{}{{{}}}", problem_macro, item.as_ref()))
-            .collect(),
-    ));
+    
+    if !problems.is_empty() {
+        doc.push(Element::Environment(
+            "enumerate".to_owned(),
+            problems
+                .iter()
+                .map(|item| format!("{}{{{}}}", problem_macro, item.as_ref()))
+                .collect(),
+        ));
+    }
     doc
 }
 
@@ -102,14 +104,16 @@ pub fn make_coursework_sheet<S: AsRef<str>>(
         None => "\\item\\input",
     };
 
-    doc.push(Element::Environment(
-        "enumerate".to_owned(),
-        problems
-            .iter()
-            .zip(marks.iter())
-            .map(|(item, mark)| format!("{}[{}]{{{}}}", problem_macro, mark, item.as_ref()))
-            .collect(),
-    ));
+    if !problems.is_empty() {
+        doc.push(Element::Environment(
+            "enumerate".to_owned(),
+            problems
+                .iter()
+                .zip(marks.iter())
+                .map(|(item, mark)| format!("{}[{}]{{{}}}", problem_macro, mark, item.as_ref()))
+                .collect(),
+        ));
+    }
     doc
 }
 
