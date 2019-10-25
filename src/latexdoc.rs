@@ -4,12 +4,7 @@ use latex::{Document, DocumentClass, Element, Paragraph, PreambleElement};
 
 use crate::course_items::{Metadata, SheetConfig};
 
-fn make_basic_doc(
-    doc_class: &str, 
-    title: &str,
-    date: &str,
-    metadata: &Metadata
-) -> Document {
+fn make_basic_doc(doc_class: &str, title: &str, date: &str, metadata: &Metadata) -> Document {
     let document_class = match doc_class {
         "article" => DocumentClass::Article,
         "report" => DocumentClass::Report,
@@ -20,10 +15,8 @@ fn make_basic_doc(
     let mut doc = Document::new(document_class);
 
     doc.preamble.author(&metadata.author).title(title);
-    doc.preamble.push(PreambleElement::UserDefined(format!(
-        "\\date{{{}}}",
-        date
-    )));
+    doc.preamble
+        .push(PreambleElement::UserDefined(format!("\\date{{{}}}", date)));
 
     for (mac, item) in metadata.iter() {
         doc.preamble.push(PreambleElement::UserDefined(format!(
@@ -75,7 +68,7 @@ pub fn make_problem_sheet<S: AsRef<str>>(
         Some(ref mac) => mac,
         None => "\\item\\input",
     };
-    
+
     if !problems.is_empty() {
         doc.push(Element::Environment(
             "enumerate".to_owned(),

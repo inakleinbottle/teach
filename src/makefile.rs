@@ -183,11 +183,7 @@ pub fn write_component_makefile(
     Ok(())
 }
 
-pub fn write_toplevel_makefile<S: AsRef<str>>(
-    path: &Path,
-    components: &[S]
-) -> TeachResult<()> {
-
+pub fn write_toplevel_makefile<S: AsRef<str>>(path: &Path, components: &[S]) -> TeachResult<()> {
     let mut comp: Vec<&str> = components.iter().map(AsRef::as_ref).collect();
     trace!("Components: {:?}", &comp);
     let mut all_ = vec!["all"];
@@ -203,22 +199,19 @@ pub fn write_toplevel_makefile<S: AsRef<str>>(
         MakeTarget {
             targets: &["all"],
             prereqs: &comp,
-            recipe: &[""]
+            recipe: &[""],
         },
     ];
-    
+
     trace!("Length: {}", comp.len());
     for i in 0..comp.len() {
         trace!("pushing {:?}", &comp[i]);
-        rules.push(
-            MakeTarget {
-                targets: &comp[i..i+1],
-                prereqs: &[""],
-                recipe: &["$(MAKE) -C $@ $(MAKEFLAGS) $(MAKECMDTARGETS)"]
-            }
-        )
+        rules.push(MakeTarget {
+            targets: &comp[i..i + 1],
+            prereqs: &[""],
+            recipe: &["$(MAKE) -C $@ $(MAKEFLAGS) $(MAKECMDTARGETS)"],
+        })
     }
-
 
     let mf = Makefile {
         vars: &[""],
@@ -227,13 +220,8 @@ pub fn write_toplevel_makefile<S: AsRef<str>>(
 
     fs::write(path.join("Makefile"), mf.to_string())?;
 
-
     Ok(())
-
 }
-
-
-
 
 #[cfg(test)]
 mod tests {

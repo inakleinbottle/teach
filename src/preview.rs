@@ -6,15 +6,14 @@ use std::process::{Child as ChildProcess, Command, Stdio};
 
 use failure::bail;
 use latex;
-use tempfile;
+use log::{error, info, trace, warn};
 use outparse;
-use log::{warn, error, info, trace};
+use tempfile;
 
 use crate::config::AppConfig;
 use crate::course_items::Config;
 use crate::latexdoc;
 use crate::TeachResult;
-
 
 pub struct Previewer<'a> {
     root: &'a Path,
@@ -114,11 +113,10 @@ impl<'a> Previewer<'a> {
                 }
 
                 if report.missing_references == 0 && report.missing_citations == 0 {
-                    break
+                    break;
                 }
             }
         }
-        
 
         Ok(())
     }

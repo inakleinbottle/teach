@@ -1,17 +1,16 @@
 use std::collections::HashMap;
+use std::fs;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
-use std::fs;
 
 use latex;
 use log::info;
 use serde::{Deserialize, Serialize};
 
-use crate::TeachResult;
 use crate::latexdoc::{make_coursework_sheet, make_problem_sheet};
 use crate::makefile::{write_component_makefile, write_sheet_makefile};
 use crate::Course;
-
+use crate::TeachResult;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Sources {
@@ -83,18 +82,15 @@ pub enum CourseItem {
 }
 
 impl CourseItem {
-    fn build(
-        &self,
-        name: &str,
-        root: &Path,
-        course: &Course
-    ) -> TeachResult<()> {
+    fn build(&self, name: &str, root: &Path, course: &Course) -> TeachResult<()> {
         match self {
             Self::Sheet(info) => {
                 let intro = match info.intro {
                     Some(ref t) => t,
                     None => "",
                 };
+
+                let problems = course.get_problems(&info.problems)?;
 
                 fs::write(
                     root.join(format!("{}-problems.tex", name)),
@@ -103,7 +99,7 @@ impl CourseItem {
                         intro,
                         &course.year,
                         &course.course_file.metadata,
-                        &info.problems,
+                        &problems,
                         &course.course_file.config.sheet_config,
                     ))?,
                 )?;
@@ -114,11 +110,11 @@ impl CourseItem {
                         intro,
                         &course.year,
                         &course.course_file.metadata,
-                        &info.problems,
+                        &problems,
                         &course.course_file.config.solution_config,
                     ))?,
                 )?;
-                write_sheet_makefile(name, root, &info.problems)?;
+                write_sheet_makefile(name, root, &problems)?;
             }
 
             Self::Coursework(info) => {
@@ -127,6 +123,8 @@ impl CourseItem {
                     None => "",
                 };
 
+                let problems = course.get_problems(&info.problems)?;
+
                 fs::write(
                     root.join(format!("{}-problems.tex", name)),
                     latex::print(&make_coursework_sheet(
@@ -134,7 +132,7 @@ impl CourseItem {
                         intro,
                         &course.year,
                         &course.course_file.metadata,
-                        &info.problems,
+                        &problems,
                         &info.marks,
                         &course.course_file.config.sheet_config,
                     ))?,
@@ -146,11 +144,11 @@ impl CourseItem {
                         intro,
                         &course.year,
                         &course.course_file.metadata,
-                        &info.problems,
+                        &problems,
                         &course.course_file.config.solution_config,
                     ))?,
                 )?;
-                write_sheet_makefile(name, root, &info.problems)?;
+                write_sheet_makefile(name, root, &problems)?;
             }
         }
         Ok(())
@@ -164,31 +162,19 @@ pub struct Component {
 }
 
 impl Component {
-    pub fn build(
-        &self, 
-        root: &Path, 
-        course: &Course
-    ) -> TeachResult<()> {
+    pub fn build(&self, root: &Path, course: &Course) -> TeachResult<()> {
         for (name, item) in self.items.iter() {
             info!("Creating {}/{}", root.display(), name);
             let path = root.join(name);
             if !path.exists() {
                 fs::create_dir(&path)?;
             }
-            item.build(
-                name, 
-                &path, 
-                course,
-            )?;
+            item.build(name, &path, course)?;
         }
         let mut probs_path = PathBuf::from("..");
         probs_path.push("..");
         probs_path.push(&course.course_file.config.sources.problems);
-        write_component_makefile(
-            root, 
-            &probs_path.to_string_lossy(), 
-            &["../../include"]
-        )?;
+        write_component_makefile(root, &probs_path.to_string_lossy(), &["../../include"])?;
 
         Ok(())
     }

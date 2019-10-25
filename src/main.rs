@@ -1,8 +1,10 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use structopt::StructOpt;
 use log::{self, info};
 use simple_logger;
+use structopt::StructOpt;
+use term_grid;
+use term_size;
 
 use teach::preview::Previewer;
 use teach::{Course, TeachResult};
@@ -32,6 +34,12 @@ enum Commands {
 
     #[structopt(name = "preview")]
     Preview { name: String },
+
+    #[structopt(name = "course")]
+    CourseCmd,
+
+    #[structopt(name = "problems")]
+    Problems { problems: Vec<String> },
 }
 
 #[derive(StructOpt)]
@@ -39,10 +47,10 @@ struct Options {
     #[structopt(short = "p", long = "path", parse(from_os_str), default_value = ".")]
     path: PathBuf,
 
-    #[structopt(short="v", long="verbose", conflicts_with="quiet")]
+    #[structopt(short = "v", long = "verbose", conflicts_with = "quiet")]
     verbose: bool,
 
-    #[structopt(short="q", long="quiet", conflicts_with="verbose")]
+    #[structopt(short = "q", long = "quiet", conflicts_with = "verbose")]
     quiet: bool,
 
     #[structopt(flatten)]
@@ -79,6 +87,25 @@ fn main() -> TeachResult<()> {
             info!("Previewing problem {}", name);
             let previewer = Previewer::new(&cf.path, &name, &cf.course_file.config);
             previewer.preview()?;
+        }
+        CourseCmd => {
+            info!("Editing course file {}", cf.path.display());
+            cf.edit_course_file()?;
+        }
+        Problems { problems } => {
+            let mut grid = term_grid::Grid::new(term_grid::GridOptions {
+                direction: term_grid::Direction::LeftToRight,
+                filling: term_grid::Filling::Spaces(1),
+            });
+
+            cf.get_problems(&problems)?.into_iter().for_each(|prob| {
+                grid.add(term_grid::Cell::from(prob));
+            });
+
+            if let Some((w, _)) = term_size::dimensions() {
+                println!("Printing problems");
+                println!("{}", grid.fit_into_width(w).unwrap());
+            }
         }
     }
 
